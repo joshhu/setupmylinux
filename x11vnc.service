@@ -1,0 +1,11 @@
+[Unit]
+Description=Start x11vnc at startup.
+After=network-online.target multi-user.target
+
+[Service]
+
+User=root
+ExecStart=/usr/bin/x11vnc -rfbport 5900 -auth guess -forever -rfbauth /home/joshhu/.vnc/passwd
+
+[Install]
+WantedBy=multi-user.target
