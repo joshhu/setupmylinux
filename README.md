@@ -8,6 +8,7 @@
 | --- | --- |
 | `CLAUDE.md` | 完整設定流程（系統、zsh、語系、固定 IP、軟體清單、RDP、Chrome…），也是給 Claude Code 照著做的指示 |
 | `.zshrc` | 我的 zsh 設定（oh-my-zsh、plugins、uv / nvm / brew 的 PATH） |
+| `.zshrc.macos` | macOS（Apple Silicon）版的 zsh 設定；流程見 `CLAUDE.md` 的 macOS 段落 |
 | `myclean.zsh-theme` | 自訂的 oh-my-zsh theme |
 | `x11vnc.service` | 24.04 以前用的 x11vnc systemd unit；26.04 改用內建 RDP，不再需要 |
 
