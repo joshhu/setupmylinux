@@ -150,3 +150,31 @@ brew install tailscale
 sudo brew services start tailscale          # /Library/LaunchDaemons/sh.brew.tailscale.plist
 sudo tailscale up --hostname=<小寫主機名稱>   # 把授權網址給我，在瀏覽器核准
 管理後台對這台選「Disable key expiry」。
+
+## 無人值守遠端 Mac（關蓋、不接螢幕，只接電源 + WiFi，從台灣用 Tailscale 連）
+最高原則：**Tailscale 永遠連著比什麼都重要**。所以只用 brew 版 tailscaled（唯一能在登入前跑的版本），不裝 Tailscale GUI App。
+已在 JoshMacUSA（MacBook Air M1, macOS 27）驗證：關蓋、無螢幕下 SSH 與螢幕共享都能透過 Tailscale 連入。
+
+- FileVault 必須關閉（`fdesetup status`），否則重開機卡在解鎖畫面、沒網路。
+- 電源：
+  sudo pmset -a disablesleep 1      # 關蓋不睡（M1 實測有效）
+  sudo pmset -a sleep 0 disksleep 0 standby 0 powernap 0 hibernatemode 0 womp 1 tcpkeepalive 1 ttyskeepawake 1 lowpowermode 0 displaysleep 10
+  sudo systemsetup -setrestartfreeze on
+  斷電後：nvram 不要動，Apple silicon 筆電預設接上電源就開機（不要設 BootPreference）。
+- 螢幕共享（不用 GUI）：
+  sudo launchctl enable system/com.apple.screensharing
+  sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist   # 回「Bootstrap failed: 5」也沒關係，5900 有在聽就好
+  檢查：從外面讀 5900 要回 `RFB 003.889`（非 root 的 lsof 看不到 launchd 的 socket）。
+  Windows VNC Viewer 會報「Key length too large」（不支援 Apple 驗證）→ 開傳統 VNC 密碼（只取前 8 字元）：
+  sudo .../ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvnclegacy -vnclegacy yes -setvncpw -vncpw <密碼>
+- 自動登入：`sysadminctl -autologin set` 從 SSH 會 error 22、不產生 /etc/kcpassword。
+  改成 `defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser joshhu` + 手動產生 /etc/kcpassword
+  （密碼補 NUL 到 12 的倍數，與 key 7D 89 52 23 D2 BC DD EA A3 B9 1F 循環 XOR；root:wheel 600）。
+- 自動更新：只自動裝安全性回應與系統資料檔，macOS 版本更新不自動裝：
+  /Library/Preferences/com.apple.SoftwareUpdate 設 AutomaticCheckEnabled/AutomaticDownload/CriticalUpdateInstall/ConfigDataInstall = true，AutomaticallyInstallMacOSUpdates = false
+- 虛擬顯示器：`brew install --cask betterdisplay`，建一個虛擬螢幕（16:9、2560×1440 HiDPI）並設開機自動連接、Launch at login。
+  `/opt/homebrew/bin/betterdisplaycli set -name="<名稱>" -connected=on`。從 Mac 用螢幕共享「高效能」模式時，會暫時改用它自己建的虛擬顯示器。
+- WiFi 登入前連線：WiFi 密碼要在**系統**鑰匙圈（從選單列加入的就是）。到新地點的 WiFi 要先在現場加好，否則開機沒網路就再也連不回來。
+- `~/.ssh/config` 的 HostName 用 **Tailscale IP**（區網 DHCP 會換，到美國也沒用）。
+- 要在機器前用 GUI 做的：充電上限 80%（電池 → 充電 ⓘ）、確認螢幕共享允許 joshhu、BetterDisplay 首次引導。
+- Apple container 的 apiserver 依 session 分 domain（SSH = user/、桌面 = gui/），只能服務其中一邊；目前用 `~/Library/LaunchAgents/local.container.system-start.plist`（LimitLoadToSessionType=Background）給 SSH 用。不重要，可不設。
