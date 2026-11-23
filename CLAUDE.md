@@ -141,6 +141,7 @@ mkdir -p ~/.nvm && nvm install --lts && nvm alias default 'lts/*'
 ## Container：用 Apple container，不裝 Docker
 brew install container
 container system start --enable-kernel-install
+brew services start container     # 登入時自動 `container system start`（使用者層級，要登入才會跑；brew services 顯示 stopped 是正常的，它跑完就結束）
 測試：`container run --rm docker.io/library/alpine:latest uname -a`
 
 ## Tailscale：用 brew 版 tailscaled（系統 LaunchDaemon），不用 GUI App
