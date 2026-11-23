@@ -112,3 +112,40 @@ sudo apt install ./google-chrome-stable_current_amd64.deb
 
 ## 裝完
 重新登入一次（或重開機），zsh、語系、docker group 才會生效。
+
+---
+
+# macOS 主機（Apple Silicon）
+
+不是 Linux，Linux 系統層的東西（apt、語系、netplan、RDP、休眠、Chrome、sudo 免密碼）都不做。
+只做 zsh、Homebrew、Ghostty，以及上面清單裡 macOS 也有的 CLI，全部用 brew 裝。
+
+## 連線
+- `.env` 三行：IP、帳號、密碼（`.env` 已 gitignore，不可 commit）。密碼只從 `.env` 讀，用 stdin 餵給 sudo / SSH_ASKPASS，不要寫進指令。
+- 主機名稱已設好不改；`~/.ssh/config` 加一筆 Host（小寫主機名稱），Mac 都用 `JoshWorkToNas` 金鑰。
+- 需要 sudo 的步驟（Homebrew 安裝）暫時放 `/etc/sudoers.d/zz-temp-setup`，**裝完就刪掉**；Mac 不保留 sudo 免密碼。
+
+## Homebrew + zsh
+NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"   # 會順便裝 Command Line Tools
+echo 'eval "$(/opt/homebrew/bin/brew shellenv zsh)"' >> ~/.zprofile
+brew install git autojump
+brew install --cask ghostty
+oh-my-zsh（--unattended）+ 三個 plugins + myclean theme 同 Linux
+cp .zshrc.macos ~/.zshrc     # Mac 版：brew 在 oh-my-zsh 之前載入、無 CUDA、nvm 從 /opt/homebrew/opt/nvm 載入
+
+## CLI
+brew install uv nvm gh ffmpeg yt-dlp htop btop ncdu duf ripgrep fd bat eza jq yq httpie wget mkcert nmap tmux fzf direnv lazygit tealdeer glow rsync mole
+mkdir -p ~/.nvm && nvm install --lts && nvm alias default 'lts/*'
+（Mac 上 fd / bat 直接就是原名，不用做捷徑；mole 是 Mac 清理工具，指令 `mole` / `mo`）
+
+## Container：用 Apple container，不裝 Docker
+brew install container
+container system start --enable-kernel-install
+測試：`container run --rm docker.io/library/alpine:latest uname -a`
+
+## Tailscale：用 brew 版 tailscaled（系統 LaunchDaemon），不用 GUI App
+不用登入桌面、開機就啟動。GUI 版（App Store / 官網）要登入桌面才會跑，且會跟 tailscaled 衝突，兩者擇一。
+brew install tailscale
+sudo brew services start tailscale          # /Library/LaunchDaemons/sh.brew.tailscale.plist
+sudo tailscale up --hostname=<小寫主機名稱>   # 把授權網址給我，在瀏覽器核准
+管理後台對這台選「Disable key expiry」。
