@@ -96,7 +96,28 @@ sudo systemctl enable --now gnome-remote-desktop.service
 - 同一帳號同時只能有一個桌面 session。本機已登入時 RDP 會跳「remote session is running」，
   選 force stop 後要等 5–10 秒讓舊 session 關完再重連，否則會一片黑只有滑鼠。
   卡住時 `sudo systemctl restart gnome-remote-desktop` 再重連。
-- 舊版（24.04 以前）才用 lightdm + x11vnc + x11vnc.service。
+- 舊版（24.04 以前）才用 lightdm + x11vnc + x11vnc.service，見下一段。
+
+## 遠端桌面：VNC（24.04 用這個，例如 DGX OS）
+先看版本：`grep PRETTY /etc/os-release`。24.04 → VNC；26.04 → 上面的 RDP。
+echo "lightdm shared/default-x-display-manager select lightdm" | sudo debconf-set-selections
+sudo DEBIAN_FRONTEND=noninteractive apt install -y lightdm x11vnc
+echo /usr/sbin/lightdm | sudo tee /etc/X11/default-display-manager && sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure lightdm
+sudo x11vnc -storepasswd <密碼> /home/joshhu/.vnc/passwd     # VNC 密碼同登入密碼（只取前 8 字元）；記得 chown joshhu
+sudo cp x11vnc.service /etc/systemd/system/ && sudo systemctl enable x11vnc.service
+重開機後生效（會關掉本機目前的 gdm 桌面）。
+- repo 的 x11vnc.service 必須有 `Restart=always`：使用者登入時 X 授權會換，x11vnc 會斷一次，靠它自動重啟（JoshDGX2 實測）。
+- 登入後 session 是 X11（lightdm 用 /usr/share/xsessions），x11vnc 接 `:0`。
+
+## DGX Spark（DGX OS = Ubuntu 24.04 arm64）注意事項
+- aarch64：Chrome 用 `google-chrome-stable_current_arm64.deb`；gh / tailscale 官方 repo 都有 arm64。
+- Docker + NVIDIA Container Toolkit 已內建，不重裝，只要 `usermod -aG docker joshhu`。
+- noble 的 apt 沒有 lazygit、glow → 跟 yq 一樣用 brew 裝。CUDA 在 /usr/local/cuda-13.0，.zshrc 路徑可直接用。
+- 系統語系是中文，用 `apt-cache policy` 判斷套件要加 `LC_ALL=C`（否則是「候選：」不是 Candidate）。
+- 有線網路是 NetworkManager 自己的連線（不在 netplan），固定 IP 用 nmcli：
+  sudo nmcli con mod "<有線連線名稱>" ipv4.method manual ipv4.addresses <IP>/24 ipv4.gateway 192.168.1.1 ipv4.dns "192.168.1.1 1.1.1.1" && sudo nmcli con up "<有線連線名稱>"
+- 有線和 WiFi 可能同時連著（WiFi metric 較高，當備援）。
+- 已設好：JoshDGX2（192.168.1.93 固定 / Tailscale 100.104.113.48），金鑰 `~/.ssh/JoshDGX2`。
 
 ## 將背景改成黑色
 gsettings set org.gnome.desktop.background picture-options 'none'
